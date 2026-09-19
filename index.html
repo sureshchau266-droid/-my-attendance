@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="My Attendance">
+<title>My Attendance</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Arial;color:#111}
+.app{max-width:520px;margin:auto;padding:18px 15px 40px}h1{margin:5px 0;font-size:29px}h2,h3{margin:0 0 12px}.muted{color:#777}
+.card{background:#fff;border-radius:22px;padding:18px;margin:13px 0;box-shadow:0 4px 18px #0000000b}
+.row{display:flex;gap:9px}.row>*{flex:1}
+button,input,select{font:inherit}button{border:0;border-radius:14px;padding:13px 15px;font-weight:700;background:#eee}
+button.primary{background:#111;color:#fff}button.green{background:#22c55e;color:#fff}button.red{background:#ef4444;color:#fff}button.blue{background:#2563eb;color:#fff}button.warn{background:#f59e0b;color:#111}button.danger{background:#fee2e2;color:#b91c1c}
+input,select{width:100%;padding:13px;border:1px solid #ddd;border-radius:13px;background:#fff;margin:5px 0 10px}
+.statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.stat{background:#f5f5f7;border-radius:15px;padding:13px;text-align:center}.big{font-size:30px;font-weight:800}
+.pct{font-size:48px;text-align:center;font-weight:900}.bar{height:11px;background:#e5e5ea;border-radius:20px;overflow:hidden;margin:12px 0}.fill{height:100%;background:#22c55e;width:0}
+.badge{display:inline-block;padding:6px 9px;border-radius:10px;font-size:12px;font-weight:700}.holiday{background:#e5e7eb;color:#374151}.present{background:#dcfce7;color:#15803d}.absent{background:#fee2e2;color:#b91c1c}
+.item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #eee}.item:last-child{border-bottom:0}
+.hidden{display:none!important}.top{display:flex;justify-content:space-between;align-items:center;gap:8px}.center{text-align:center}.small{font-size:13px}.note{padding:11px;border-radius:13px;background:#f5f5f7;font-size:13px}
+#login{min-height:90vh;display:flex;align-items:center}.logo{font-size:50px;text-align:center}.toast{position:fixed;bottom:20px;left:15px;right:15px;max-width:490px;margin:auto;background:#111;color:#fff;padding:13px;border-radius:14px;text-align:center;z-index:10}
+@media print{body{background:#fff}.no-print{display:none!important}.card{box-shadow:none;border:1px solid #ddd}}
+</style>
+</head>
+<body>
+
+<div id="login" class="app">
+<div class="card" style="width:100%">
+<div class="logo">📚</div><h1 class="center">My Attendance</h1>
+<p class="muted center">Personal • B.Sc Nursing</p>
+<div id="googleLogin">
+<button class="primary" style="width:100%" id="googleBtn">🔐 Continue with Google</button>
+<p class="small muted center">Sign in with your Google account. Your attendance is saved securely in the cloud.</p>
+</div></div>
+</div>
+</div>
+
+<div id="app" class="app hidden">
+<div class="top no-print">
+<div><h1>My Attendance 📚</h1><div class="muted">Personal Tracker</div></div>
+<button id="logout">Logout</button>
+</div>
+
+<div class="card">
+<div class="top"><div><b>Current Semester</b><div class="small muted">Each semester has separate attendance</div></div>
+<button class="blue no-print" id="newSem">+ Semester</button></div>
+<select id="semester"></select>
+</div>
+
+<div class="card">
+<div class="pct" id="pct">0%</div><div class="center muted">Attendance</div>
+<div class="bar"><div class="fill" id="fill"></div></div>
+<div class="statgrid">
+<div class="stat"><div class="big" id="working">0</div><div class="small muted">Working Days</div></div>
+<div class="stat"><div class="big" id="present">0</div><div class="small muted">Present</div></div>
+<div class="stat"><div class="big" id="absent">0</div><div class="small muted">Absent</div></div>
+</div>
+<p class="note" id="targetInfo"></p>
+</div>
+
+<div class="card no-print">
+<h3>📅 Mark Attendance</h3>
+<input id="date" type="date">
+<div id="dayInfo" class="small muted"></div><br>
+<div class="row">
+<button class="green" id="presentBtn">✓ Present</button>
+<button class="red" id="absentBtn">✕ Absent</button>
+</div>
+<div class="row" style="margin-top:6px">
+<button class="warn" id="holidayBtn">🎉 College Holiday</button>
+<button id="publicBtn">📌 Public Holiday</button>
+</div>
+<button class="danger" style="width:100%;margin-top:7px" id="removeDay">Remove custom status</button>
+</div>
+
+<div class="card no-print">
+<h3>⚙️ Settings</h3>
+<label>Attendance target %</label>
+<input id="target" type="number" min="1" max="100" value="75">
+<button style="width:100%" id="saveTarget">Save Target</button>
+</div>
+
+<div class="card">
+<div class="top"><h3>📅 Calendar / History</h3><button class="primary no-print" id="pdf">Export PDF</button></div>
+<div id="history"></div>
+</div>
+
+<div class="card no-print">
+<h3>🎓 Semester Archive</h3>
+<p class="small muted">Create a new semester when the current one ends. Old attendance remains saved in the cloud.</p>
+<div id="archives"></div>
+</div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import {getDatabase,ref,get,set} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+
+const firebaseConfig={
+apiKey:"AIzaSyCNWZBMM1UBgEn3MjeUUkNNGrpWOgm1-Po",
+authDomain:"college-attendance-bdddc.firebaseapp.com",
+databaseURL:"https://college-attendance-bdddc-default-rtdb.asia-southeast1.firebasedatabase.app",
+projectId:"college-attendance-bdddc",
+storageBucket:"college-attendance-bdddc.firebasestorage.app",
+messagingSenderId:"54550897862",
+appId:"1:54550897862:web:09054d6d8288f6246de3c7"
+};
+
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getDatabase(app);
+let user=null;
+const googleProvider=new GoogleAuthProvider();
+let state={target:75,currentSemester:"Semester 1",semesters:{"Semester 1":{records:{}}},holidays:{}};
+
+const $=id=>document.getElementById(id);
+const today=()=>new Date().toISOString().slice(0,10);
+const fmt=d=>new Date(d+"T00:00:00").toLocaleDateString(undefined,{day:"2-digit",month:"short",year:"numeric",weekday:"short"});
+function toast(m){$("toast").textContent=m;$("toast").classList.remove("hidden");setTimeout(()=>$("toast").classList.add("hidden"),2500)}
+function sunday(d){return new Date(d+"T00:00:00").getDay()===0}
+function sem(){if(!state.semesters[state.currentSemester])state.semesters[state.currentSemester]={records:{}};return state.semesters[state.currentSemester]}
+function save(){return set(ref(db,"users/"+user.uid),state)}
+function calc(){
+let r=sem().records||{},dates=Object.keys(r).filter(d=>!sunday(d)&&!state.holidays[d]);
+let p=dates.filter(d=>r[d]==="Present").length,a=dates.filter(d=>r[d]==="Absent").length,w=dates.length;
+return {p,a,w,pct:w?Math.round(p/w*100):0}
+}
+function render(){
+let names=Object.keys(state.semesters||{});
+if(!names.length){names=["Semester 1"];state.semesters={"Semester 1":{records:{}}};state.currentSemester="Semester 1"}
+$("semester").innerHTML=names.map(x=>`<option ${x===state.currentSemester?"selected":""}>${x}</option>`).join("");
+$("archives").innerHTML=names.map(x=>`<div class="item"><span>${x}</span><b>${Object.keys(state.semesters[x].records||{}).length} entries</b></div>`).join("");
+
+let c=calc();$("pct").textContent=c.pct+"%";$("working").textContent=c.w;$("present").textContent=c.p;$("absent").textContent=c.a;$("fill").style.width=Math.min(c.pct,100)+"%";$("target").value=state.target||75;
+let advice=c.w===0?"Mark attendance to start your semester.":c.pct>=(state.target||75)?"You are at or above your target.":(()=>{let n=0;while((c.p+n)/(c.w+n)<(state.target||75)/100&&n<1000)n++;return `Need ${n} consecutive Present day(s) to reach ${state.target}%.`;})();
+$("targetInfo").textContent=advice;
+
+let d=$("date").value||today(),r=sem().records[d],h=state.holidays[d];
+$("dayInfo").textContent=sunday(d)?"Sunday • Automatic Holiday":h?`Holiday: ${h}`:r?`Status: ${r}`:"No status yet";
+$("presentBtn").disabled=sunday(d)||!!h;$("absentBtn").disabled=sunday(d)||!!h;
+
+let html="",records=sem().records||{};
+Object.keys(records).sort().reverse().forEach(d=>{let r=records[d];html+=`<div class="item"><span>${fmt(d)}</span><span class="badge ${r==="Present"?"present":"absent"}">${r}</span></div>`});
+Object.keys(state.holidays||{}).filter(d=>!sunday(d)).sort().reverse().forEach(d=>{html+=`<div class="item"><span>${fmt(d)}</span><span class="badge holiday">🎉 ${state.holidays[d]}</span></div>`});
+$("history").innerHTML=html||'<div class="muted small">No records yet.</div>';
+}
+async function mark(s){
+let d=$("date").value;if(!d||sunday(d)||state.holidays[d])return;
+sem().records[d]=s;await save();render();toast(s+" saved ☁️");
+}
+async function holiday(name){
+let d=$("date").value;if(!d||sunday(d))return;
+delete sem().records[d];state.holidays[d]=name;await save();render();toast(name+" saved");
+}
+async function removeDay(){
+let d=$("date").value;if(!d)return;
+delete sem().records[d];delete state.holidays[d];await save();render();toast("Removed");
+}
+async function load(){
+let snap=await get(ref(db,"users/"+user.uid));
+if(snap.exists())state={...state,...snap.val()};
+render();
+}
+
+$("date").value=today();
+$("date").addEventListener("change",render);
+$("presentBtn").onclick=()=>mark("Present");
+$("absentBtn").onclick=()=>mark("Absent");
+$("holidayBtn").onclick=()=>holiday("College Holiday");
+$("publicBtn").onclick=()=>holiday("Public Holiday");
+$("removeDay").onclick=removeDay;
+
+$("saveTarget").onclick=async()=>{
+state.target=Math.max(1,Math.min(100,Number($("target").value)||75));
+await save();render();toast("Target saved");
+};
+
+$("semester").onchange=async e=>{
+state.currentSemester=e.target.value;await save();render();
+};
+
+$("newSem").onclick=async()=>{
+let n=prompt("New semester name","Semester 4");
+if(!n||state.semesters[n])return;
+state.semesters[n]={records:{}};
+state.currentSemester=n;
+await save();render();
+};
+
+$("logout").onclick=()=>signOut(auth);
+$("pdf").onclick=()=>window.print();
+
+$("googleBtn").onclick=async()=>{
+  try{
+    await signInWithPopup(auth,googleProvider);
+  }catch(e){
+    toast(e.code==="auth/popup-closed-by-user"?"Login cancelled":e.message);
+  }
+};
+
+onAuthStateChanged(auth,async u=>{
+user=u;
+if(u){$("login").classList.add("hidden");$("app").classList.remove("hidden");await load()}
+else{$("login").classList.remove("hidden");$("app").classList.add("hidden")}
+});
+</script>
+</body>
+</html>
