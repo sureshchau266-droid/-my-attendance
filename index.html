@@ -1,1 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Attendance</title>
+<style>
+body{margin:0;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,Arial;color:#111}
+.app{max-width:500px;margin:auto;padding:20px}
+h1{font-size:28px}.sub{color:#777}
+.card{background:white;padding:20px;margin:14px 0;border-radius:22px;box-shadow:0 3px 15px #0001}
+.percent{text-align:center;font-size:48px;font-weight:bold}
+.stats{display:flex;gap:10px}.stat{flex:1;background:#f5f5f7;padding:15px;border-radius:15px;text-align:center}
+.num{font-size:25px;font-weight:bold}.small{color:#777;font-size:13px}
+button{width:100%;padding:15px;border:0;border-radius:15px;font-size:17px;font-weight:bold;margin:5px 0}
+.present{background:#22c55e;color:white}.absent{background:#ef4444;color:white}
+.progress{height:12px;background:#ddd;border-radius:20px;margin:15px 0}.bar{height:100%;background:#22c55e;border-radius:20px;width:0}
+.item{display:flex;justify-content:space-between;padding:13px 0;border-bottom:1px solid #eee}
+input{width:100%;padding:14px;border:1px solid #ddd;border-radius:12px;font-size:16px;box-sizing:border-box}
+</style>
+</head>
+<body>
+<div class="app">
+<h1>My Attendance 📚</h1>
+<div class="sub">B.Sc Nursing • Personal Tracker</div>
 
+<div class="card">
+<div class="percent" id="pct">0%</div>
+<div style="text-align:center" class="small">Target: <span id="targetText">75%</span></div>
+<div class="progress"><div class="bar" id="bar"></div></div>
+<div class="stats">
+<div class="stat"><div class="num" id="total">0</div><div class="small">Total</div></div>
+<div class="stat"><div class="num" id="present">0</div><div class="small">Present</div></div>
+<div class="stat"><div class="num" id="absent">0</div><div class="small">Absent</div></div>
+</div>
+</div>
+
+<div class="card">
+<h3>Today's Attendance</h3>
+<div class="small" id="date"></div>
+<br>
+<button class="present" onclick="mark('Present')">✓ PRESENT</button>
+<button class="absent" onclick="mark('Absent')">✕ ABSENT</button>
+<p class="small" id="status"></p>
+</div>
+
+<div class="card">
+<h3>Attendance Target</h3>
+<input id="target" type="number" value="75">
+<br><br>
+<button onclick="saveTarget()">Save Target %</button>
+</div>
+
+<div class="card">
+<h3>📅 History</h3>
+<div id="history">No records yet.</div>
+</div>
+</div>
+
+<script>
+let data=JSON.parse(localStorage.getItem("attendance")||"[]");
+let target=Number(localStorage.getItem("target")||75);
+document.getElementById("target").value=target;
+
+function today(){
+return new Date().toISOString().slice(0,10);
+}
+
+function mark(s){
+let d=today();
+let x=data.find(a=>a.date==d);
+if(x)x.status=s;
+else data.push({date:d,status:s});
+localStorage.setItem("attendance",JSON.stringify(data));
+show();
+}
+
+function saveTarget(){
+target=Number(document.getElementById("target").value)||75;
+localStorage.setItem("target",target);
+show();
+}
+
+function show(){
+let p=data.filter(x=>x.status=="Present").length;
+let a=data.filter(x=>x.status=="Absent").length;
+let t=p+a;
+let pc=t?Math.round(p/t*100):0;
+
+document.getElementById("pct").innerText=pc+"%";
+document.getElementById("total").innerText=t;
+document.getElementById("present").innerText=p;
+document.getElementById("absent").innerText=a;
+document.getElementById("targetText").innerText=target+"%";
+document.getElementById("bar").style.width=Math.min(pc,100)+"%";
+document.getElementById("date").innerText=new Date().toLocaleDateString();
+
+let x=data.find(a=>a.date==today());
+document.getElementById("status").innerText=x?"Today: "+x.status:"Not marked yet";
+
+document.getElementById("history").innerHTML=
+data.slice().reverse().map(x=>
+'<div class="item"><span>'+x.date+'</span><b>'+x.status+'</b></div>'
+).join("")||"No records yet.";
+}
+show();
+</script>
+</body>
+</html>
